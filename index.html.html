@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jakob — Daily Edition</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --paper:#EDE7DB; --card:#F8F4EC; --inset:#FCFAF4;
+    --ink:#20231D; --muted:#857D6C; --line:#DBD3C2;
+    --accent:#CF4F2B; --blue:#2F5673;
+    --up:#2E7D4F; --down:#C23B22; --amber:#BA8410;
+    --daylight:#F4E2A8;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin:0; padding:0; background:var(--paper); color:var(--ink); font-family:'Space Grotesk', system-ui, sans-serif; font-size:15px; line-height:1.45; }
+  ::selection { background:var(--accent); color:#fff; }
+
+  /* WETTER-TICKER */
+  .ticker { background:var(--ink); color:var(--paper); overflow:hidden; white-space:nowrap; position:relative; border-bottom:2px solid var(--ink); }
+  .ticker-inner { display:inline-flex; white-space:nowrap; will-change:transform; animation:slideRight 70s linear infinite; font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.04em; padding:8px 0; }
+  .ticker:hover .ticker-inner { animation-play-state:paused; }
+  @keyframes slideRight { from { transform:translateX(-50%);} to { transform:translateX(0);} }
+  .seg { padding:0 4px; }
+  .seg .lbl { color:var(--amber); }
+  .dmd { color:var(--accent); padding:0 14px; }
+  .ticker.loading .ticker-inner { animation:none; padding-left:20px; color:var(--muted); }
+
+  /* MASTHEAD */
+  .masthead { display:flex; align-items:center; justify-content:space-between; padding:12px 28px; border-bottom:2px solid var(--ink); font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
+  .masthead .edition { color:var(--ink); font-weight:700; }
+  .masthead .accent-dot { color:var(--accent); }
+  .refresh { display:inline-flex; align-items:center; gap:6px; }
+  .refresh .spin { display:inline-block; width:8px; height:8px; border:1.5px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 1.4s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg);} }
+
+  /* HERO */
+  .hero { padding:20px 28px 16px; border-bottom:1px solid var(--line); }
+  .hero-top { display:flex; align-items:flex-end; justify-content:space-between; gap:32px; flex-wrap:wrap; }
+  .eyebrow { font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+  .eyebrow b { color:var(--accent); font-weight:700; }
+  .greeting { font-family:'Fraunces', Georgia, serif; font-size:clamp(32px,4.6vw,52px); line-height:0.98; font-weight:400; letter-spacing:-0.015em; margin:0; }
+  .greeting .name { font-style:italic; font-weight:600; color:var(--accent); }
+  .daterow { font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.05em; color:var(--muted); margin-top:11px; }
+  .daterow .sep { color:var(--line); margin:0 8px; }
+  .clock-wrap { text-align:right; flex-shrink:0; }
+  .clock { font-family:'Space Mono', monospace; font-size:clamp(34px,4.4vw,50px); font-weight:700; line-height:1; letter-spacing:-0.03em; font-variant-numeric:tabular-nums; }
+  .clock .sec { color:var(--accent); }
+  .clock-sub { font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.08em; color:var(--muted); margin-top:8px; }
+
+  /* DAYLIGHT RIBBON */
+  .ribbon { margin-top:16px; }
+  .ribbon-labels { display:flex; justify-content:space-between; font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.1em; color:var(--muted); text-transform:uppercase; margin-bottom:7px; }
+  .track { position:relative; height:18px; border:1px solid var(--line); background:repeating-linear-gradient(90deg, transparent 0, transparent calc(100%/24 - 1px), var(--line) calc(100%/24 - 1px), var(--line) calc(100%/24)); overflow:hidden; }
+  .daylight { position:absolute; top:0; bottom:0; background:var(--daylight); opacity:0.75; }
+  .now-marker { position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--accent); transition:left 0.5s linear; }
+  .now-marker::after { content:''; position:absolute; top:-4px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .ribbon-foot { display:flex; justify-content:space-between; font-family:'Space Mono', monospace; font-size:10px; color:var(--muted); margin-top:7px; letter-spacing:0.04em; }
+  .ribbon-foot .sun { color:var(--amber); }
+
+  /* GRID */
+  .grid {
+    padding:18px 28px 34px; display:grid; gap:18px; align-items:start;
+    grid-template-columns:repeat(12,1fr);
+    grid-template-areas:
+      'prio prio prio crypto crypto crypto aktien aktien aktien brief brief brief'
+      'depot depot depot depot depot depot ausbl ausbl ausbl brief brief brief';
+  }
+  .area-prio{grid-area:prio;} .area-crypto{grid-area:crypto;} .area-aktien{grid-area:aktien;}
+  .area-depot{grid-area:depot;} .area-ausbl{grid-area:ausbl;} .area-brief{grid-area:brief;}
+
+  /* PANEL */
+  .panel { background:var(--card); border:1px solid var(--line); padding:16px 18px 18px; position:relative; transition:transform .18s ease, box-shadow .18s ease; }
+  @media (hover:hover) { .panel:hover { transform:translateY(-2px); box-shadow:4px 6px 0 var(--line); } }
+  .panel-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:13px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+  .panel-title { font-family:'Fraunces', Georgia, serif; font-size:19px; font-weight:600; letter-spacing:-0.01em; }
+  .panel-num { font-family:'Space Mono', monospace; font-size:11px; color:var(--accent); font-weight:700; margin-right:8px; }
+  .panel-status { display:inline-flex; align-items:center; gap:6px; font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.08em; color:var(--muted); text-transform:uppercase; white-space:nowrap; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--up); flex-shrink:0; }
+  .dot.static { background:var(--amber); }
+  .dot.live { animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  /* PRIORITY */
+  .task { display:flex; align-items:flex-start; gap:12px; padding:11px 0; border-bottom:1px dashed var(--line); cursor:pointer; user-select:none; }
+  .task:last-child { border-bottom:none; }
+  .box { width:18px; height:18px; border:1.5px solid var(--muted); flex-shrink:0; margin-top:1px; display:grid; place-items:center; font-family:'Space Mono', monospace; font-size:13px; color:var(--accent); transition:background .15s, border-color .15s; }
+  .task.done .box { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .task-body { flex:1; }
+  .task-text { font-size:14.5px; font-weight:500; transition:color .15s; }
+  .task.done .task-text { text-decoration:line-through; color:var(--muted); }
+  .task-tag { font-family:'Space Mono', monospace; font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-top:3px; }
+  .task-tag::before { content:'— '; color:var(--accent); }
+  .task:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* WATCHLIST */
+  .row { display:grid; grid-template-columns:64px 1fr auto; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:none; }
+  .tkr { font-family:'Space Mono', monospace; font-weight:700; font-size:14px; letter-spacing:0.03em; }
+  .price { font-family:'Space Mono', monospace; font-size:14px; color:var(--ink); }
+  .price.dim { color:var(--muted); font-size:12px; }
+  .chg { font-family:'Space Mono', monospace; font-size:13px; font-weight:700; text-align:right; display:inline-flex; align-items:center; gap:8px; justify-self:end; }
+  .chg .bar { display:inline-block; height:6px; width:0; max-width:46px; border-radius:1px; transition:width .4s ease; }
+  .chg.pos { color:var(--up); } .chg.pos .bar { background:var(--up); }
+  .chg.neg { color:var(--down); } .chg.neg .bar { background:var(--down); }
+  .chg.muted { color:var(--muted); font-weight:400; }
+
+  /* DEPOT */
+  .depot-sum { margin-bottom:14px; }
+  .depot-sum .lbl { font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .depot-total { font-family:'Fraunces', Georgia, serif; font-size:34px; font-weight:600; line-height:1; margin:4px 0 12px; letter-spacing:-0.01em; }
+  .depot-deltas { display:flex; gap:18px; font-family:'Space Mono', monospace; font-size:12px; }
+  .depot-deltas .blk { display:flex; flex-direction:column; gap:2px; }
+  .depot-deltas .k { font-size:9.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .depot-deltas .v.pos { color:var(--up); font-weight:700; }
+  .depot-deltas .v.neg { color:var(--down); font-weight:700; }
+  .depot-deltas .v.flat { color:var(--muted); font-weight:700; }
+  .depot-list { border-top:1px solid var(--line); margin-top:12px; padding-top:2px; display:grid; grid-auto-flow:column; grid-template-rows:repeat(6,auto); column-gap:26px; }
+  .pos { display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; padding:7px 0; border-bottom:1px dashed var(--line); }
+  .pos:last-child { border-bottom:none; }
+  .pos-n { font-size:13.5px; font-weight:500; }
+  .pos-v { font-family:'Space Mono', monospace; font-size:10.5px; color:var(--muted); margin-top:1px; display:flex; align-items:center; gap:6px; }
+  .livebadge { font-family:'Space Mono', monospace; font-size:8px; letter-spacing:0.08em; text-transform:uppercase; padding:1px 4px; border-radius:2px; line-height:1.4; }
+  .livebadge.on { color:var(--up); border:1px solid var(--up); }
+  .livebadge.off { color:var(--muted); border:1px solid var(--line); }
+  .pos-r { text-align:right; }
+  .pos-pct { font-family:'Space Mono', monospace; font-size:12.5px; font-weight:700; }
+  .pos-pct.pos { color:var(--up); } .pos-pct.neg { color:var(--down); } .pos-pct.flat { color:var(--muted); }
+  .pos-bar { display:block; height:5px; width:0; border-radius:1px; margin:4px 0 0 auto; transition:width .5s ease; }
+  .pos-bar.pos { background:var(--up); } .pos-bar.neg { background:var(--down); } .pos-bar.flat { background:var(--line); }
+  .depot-note { font-family:'Space Mono', monospace; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); text-align:right; line-height:1.6; }
+
+  /* DEPOT-AUSBLICK */
+  .ol-sec { margin-bottom:16px; }
+  .ol-sec:last-of-type { margin-bottom:0; }
+  .ol-k { font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:8px; }
+  .ol-line { font-size:13.5px; line-height:1.5; }
+  .ol-line b.pos { color:var(--up); } .ol-line b.neg { color:var(--down); } .ol-line b.flat { color:var(--muted); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+  .chip { font-family:'Space Mono', monospace; font-size:10.5px; padding:3px 8px; border:1px solid var(--line); background:var(--inset); color:var(--muted); white-space:nowrap; }
+  .chip .pos { color:var(--up); } .chip .neg { color:var(--down); }
+  .theme { margin:9px 0; }
+  .theme-top { display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px; margin-bottom:4px; }
+  .theme-top .tn { font-weight:500; }
+  .theme-top .tp { font-family:'Space Mono', monospace; font-size:10.5px; color:var(--muted); }
+  .theme-track { height:6px; background:var(--inset); border:1px solid var(--line); overflow:hidden; }
+  .theme-fill { height:100%; width:0; transition:width .6s ease; }
+  .ol-foot { font-family:'Space Mono', monospace; font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); margin-top:14px; padding-top:10px; border-top:1px dashed var(--line); line-height:1.6; }
+
+  /* NEWS */
+  .news { padding:13px 0; border-bottom:1px solid var(--line); }
+  .news:last-child { border-bottom:none; }
+  .news-cat { font-family:'Space Mono', monospace; font-size:9.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:5px; }
+  .news-h { font-family:'Fraunces', Georgia, serif; font-size:15px; font-weight:400; line-height:1.3; margin-bottom:5px; }
+  .news-m { font-family:'Space Mono', monospace; font-size:10.5px; color:var(--muted); letter-spacing:0.03em; }
+  .feed-note { font-family:'Space Mono', monospace; font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); text-align:right; margin-top:14px; padding-top:10px; border-top:1px dashed var(--line); }
+
+  /* Tablet quer / kleines Notebook */
+  @media (max-width: 1180px) {
+    .grid { grid-template-columns:repeat(4,1fr);
+      grid-template-areas:
+        'prio prio crypto crypto'
+        'aktien aktien brief brief'
+        'depot depot depot depot'
+        'ausbl ausbl ausbl ausbl'; }
+  }
+  /* Tablet hoch (z. B. iPad) */
+  @media (max-width: 900px) {
+    .masthead, .hero, .grid { padding-left:18px; padding-right:18px; }
+    .grid { gap:16px;
+      grid-template-columns:repeat(2,1fr);
+      grid-template-areas:
+        'prio crypto'
+        'aktien brief'
+        'depot depot'
+        'ausbl ausbl'; }
+    .greeting { font-size:clamp(30px,5.4vw,44px); }
+    .clock { font-size:clamp(32px,5vw,44px); }
+  }
+  /* Smartphone */
+  @media (max-width: 600px) {
+    .masthead, .hero, .grid { padding-left:14px; padding-right:14px; }
+    .masthead { flex-wrap:wrap; gap:6px 12px; font-size:10px; letter-spacing:0.07em; }
+    .grid { grid-template-columns:1fr; gap:16px;
+      grid-template-areas:'prio' 'crypto' 'aktien' 'depot' 'ausbl' 'brief'; }
+    .depot-list { grid-auto-flow:row; grid-template-rows:none; grid-template-columns:1fr; column-gap:0; }
+    .hero { padding-top:16px; padding-bottom:14px; }
+    .hero-top { flex-direction:column; align-items:flex-start; gap:14px; }
+    .clock-wrap { text-align:left; }
+    .greeting { font-size:30px; }
+    .clock { font-size:38px; }
+    .depot-total { font-size:30px; }
+    .panel:hover { transform:none; box-shadow:none; }
+    .ribbon { margin-top:14px; }
+  }
+  /* sehr schmale Geräte */
+  @media (max-width: 360px) {
+    .greeting { font-size:26px; }
+    .clock { font-size:34px; }
+    .depot-deltas { flex-direction:column; gap:8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::after { animation:none !important; transition:none !important; }
+    .ticker { overflow-x:auto; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="ticker loading" id="ticker"><div class="ticker-inner" id="ticker-inner">Wetter Düsseldorf wird geladen …</div></div>
+
+  <div class="masthead">
+    <div><span class="edition">JAKOB · DAILY EDITION</span> <span class="accent-dot">●</span> AUSGABE V1.0</div>
+    <div class="refresh"><span class="spin"></span><span id="mast-sync">DÜSSELDORF · SYNC --:--</span></div>
+  </div>
+
+  <header class="hero">
+    <div class="hero-top">
+      <div>
+        <div class="eyebrow">Session <b>00</b> · Persönliches Tageskommando</div>
+        <h1 class="greeting" id="greeting">Guten Morgen, <span class="name">Jakob.</span></h1>
+        <div class="daterow" id="daterow">—</div>
+      </div>
+      <div class="clock-wrap">
+        <div class="clock" id="clock">--:--<span class="sec">:--</span></div>
+        <div class="clock-sub" id="clock-sub">MITTELEUROPÄISCHE ZEIT · DÜSSELDORF</div>
+      </div>
+    </div>
+    <div class="ribbon">
+      <div class="ribbon-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+      <div class="track" id="track"><div class="daylight" id="daylight"></div><div class="now-marker" id="now-marker"></div></div>
+      <div class="ribbon-foot"><span>TAGESLICHT <span id="sun-times" class="sun">--:-- → --:--</span></span><span id="year-progress">TAG -- / 365 · -- %</span></div>
+    </div>
+  </header>
+
+  <main class="grid">
+
+    <section class="panel area-prio">
+      <div class="panel-head">
+        <div class="panel-title"><span class="panel-num">01</span>Prioritäten</div>
+        <span class="panel-status"><span class="dot static"></span><span id="task-count">3 OFFEN</span></span>
+      </div>
+      <div id="tasks">
+        <div class="task" data-id="t1" tabindex="0" role="checkbox" aria-checked="false"><span class="box"></span><div class="task-body"><div class="task-text">Spanisch lernen</div><div class="task-tag">Lernen</div></div></div>
+        <div class="task" data-id="t2" tabindex="0" role="checkbox" aria-checked="false"><span class="box"></span><div class="task-body"><div class="task-text">Tägliche Skool-Aufgabe abschließen</div><div class="task-tag">Routine</div></div></div>
+        <div class="task" data-id="t3" tabindex="0" role="checkbox" aria-checked="false"><span class="box"></span><div class="task-body"><div class="task-text">Marktdaten analysieren</div><div class="task-tag">Markt</div></div></div>
+      </div>
+    </section>
+
+    <section class="panel area-crypto">
+      <div class="panel-head">
+        <div class="panel-title"><span class="panel-num">02</span>Crypto</div>
+        <span class="panel-status" id="crypto-status"><span class="dot live"></span>LIVE · COINGECKO</span>
+      </div>
+      <div id="crypto-rows">
+        <div class="row" data-ticker="BTC"><span class="tkr">BTC</span><span class="price dim">lädt…</span><span class="chg muted"><span class="bar"></span>···</span></div>
+        <div class="row" data-ticker="ETH"><span class="tkr">ETH</span><span class="price dim">lädt…</span><span class="chg muted"><span class="bar"></span>···</span></div>
+        <div class="row" data-ticker="SOL"><span class="tkr">SOL</span><span class="price dim">lädt…</span><span class="chg muted"><span class="bar"></span>···</span></div>
+      </div>
+    </section>
+
+    <section class="panel area-aktien">
+      <div class="panel-head">
+        <div class="panel-title"><span class="panel-num">03</span>Aktien-Watchlist</div>
+        <span class="panel-status" id="stock-status"><span class="dot live"></span>LIVE · YAHOO</span>
+      </div>
+      <div id="stock-rows">
+        <div class="row" data-ticker="RKLB"><span class="tkr">RKLB</span><span class="price dim">lädt…</span><span class="chg muted"><span class="bar"></span>···</span></div>
+        <div class="row" data-ticker="NVDA"><span class="tkr">NVDA</span><span class="price dim">lädt…</span><span class="chg muted"><span class="bar"></span>···</span></div>
+        <div class="row" data-ticker="NBIS"><span class="tkr">NBIS</span><span class="price dim">lädt…</span><span class="chg muted"><span class="bar"></span>···</span></div>
+      </div>
+    </section>
+
+    <section class="panel area-depot">
+      <div class="panel-head">
+        <div class="panel-title"><span class="panel-num">04</span>Depot</div>
+        <span class="panel-status" id="depot-status"><span class="dot static"></span><span id="depot-livecount">—</span></span>
+      </div>
+      <div class="depot-sum">
+        <div class="lbl">Gesamtwert</div>
+        <div class="depot-total" id="depot-total">— €</div>
+        <div class="depot-deltas">
+          <div class="blk"><span class="k">Heute</span><span class="v" id="depot-day">—</span></div>
+          <div class="blk"><span class="k">Gesamt</span><span class="v" id="depot-tot">—</span></div>
+        </div>
+      </div>
+      <div class="depot-list" id="depot-list"></div>
+      <div class="depot-note" id="depot-note">—</div>
+    </section>
+
+    <section class="panel area-ausbl">
+      <div class="panel-head">
+        <div class="panel-title"><span class="panel-num">05</span>Depot-Ausblick</div>
+        <span class="panel-status"><span class="dot static"></span>EINORDNUNG</span>
+      </div>
+      <div class="ol-sec">
+        <div class="ol-k">Heute</div>
+        <div class="ol-line" id="ol-today">—</div>
+        <div class="chips" id="ol-chips"></div>
+      </div>
+      <div class="ol-sec">
+        <div class="ol-k">Diese Woche · Struktur</div>
+        <div id="ol-themes"></div>
+        <div class="ol-line" id="ol-week" style="margin-top:10px"></div>
+      </div>
+      <div class="ol-foot">Keine Anlageberatung · keine Kursprognose<br>Einordnung aus deinen Positionsdaten</div>
+    </section>
+
+    <section class="panel area-brief">
+      <div class="panel-head">
+        <div class="panel-title"><span class="panel-num">06</span>Briefing</div>
+        <span class="panel-status"><span class="dot static"></span>6 MELDUNGEN</span>
+      </div>
+      <article class="news"><div class="news-cat">KI</div><div class="news-h">Anbieter von Foundation-Modellen bauen Inferenz-Kapazität für Agenten-Workloads aus</div><div class="news-m">Reuters · vor 2 Std.</div></article>
+      <article class="news"><div class="news-cat">Kryptoregulierung</div><div class="news-h">EU präzisiert MiCA-Vorgaben für Stablecoin-Emittenten</div><div class="news-m">Bloomberg · vor 3 Std.</div></article>
+      <article class="news"><div class="news-cat">US-Märkte</div><div class="news-h">Indizes uneinheitlich vor neuen Fed-Signalen zur Zinspolitik</div><div class="news-m">FT · vor 4 Std.</div></article>
+      <article class="news"><div class="news-cat">Venture Capital</div><div class="news-h">Finanzierungsrunden im KI-Infrastruktursektor bleiben auf Rekordniveau</div><div class="news-m">The Block · vor 6 Std.</div></article>
+      <article class="news"><div class="news-cat">Kryptoregulierung</div><div class="news-h">SEC signalisiert klarere Kriterien zur Einstufung digitaler Vermögenswerte</div><div class="news-m">Reuters · vor 8 Std.</div></article>
+      <article class="news"><div class="news-cat">US-Märkte</div><div class="news-h">Nachfrage nach KI-Beschleunigern übersteigt weiterhin das Angebot</div><div class="news-m">Bloomberg · vor 11 Std.</div></article>
+      <div class="feed-note">Kuratiertes Briefing · täglich aktualisieren</div>
+    </section>
+
+  </main>
+
+<script>
+  const NAME="Jakob", CITY="Düsseldorf", LAT=51.2277, LON=6.7735;
+  const WD=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+  const MO=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  const pad=n=>String(n).padStart(2,"0");
+  const SOLAR_NOON_LOCAL=13.35;
+  let realSun=null;
+
+  function greetingText(h){ if(h>=5&&h<12)return"Guten Morgen, "; if(h>=12&&h<18)return"Guten Tag, "; if(h>=18&&h<23)return"Guten Abend, "; return"Gute Nacht, "; }
+  function dayOfYear(d){ const s=new Date(d.getFullYear(),0,1); return Math.floor((d-s)/86400000)+1; }
+  function weekNumber(d){ const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-day+3); const f=new Date(Date.UTC(t.getUTCFullYear(),0,4)); return 1+Math.round((t-f)/(7*86400000)); }
+  function sunApprox(d){ const doy=dayOfYear(d); const decl=-23.44*Math.cos((2*Math.PI/365)*(doy+10))*Math.PI/180; const phi=LAT*Math.PI/180; let c=-Math.tan(phi)*Math.tan(decl); c=Math.max(-1,Math.min(1,c)); const H=Math.acos(c)*180/Math.PI/15; return {rise:SOLAR_NOON_LOCAL-H, set:SOLAR_NOON_LOCAL+H}; }
+  function fmtHM(x){ let h=Math.floor(x), m=Math.round((x-h)*60); if(m===60){h++;m=0;} return pad(h)+":"+pad(m); }
+
+  function renderRibbon(now){
+    const s = realSun || sunApprox(now);
+    const dl=document.getElementById("daylight");
+    dl.style.left=(s.rise/24*100)+"%"; dl.style.width=((s.set-s.rise)/24*100)+"%";
+    const nowH=now.getHours()+now.getMinutes()/60+now.getSeconds()/3600;
+    document.getElementById("now-marker").style.left=(nowH/24*100)+"%";
+    document.getElementById("sun-times").textContent=fmtHM(s.rise)+" → "+fmtHM(s.set);
+    const doy=dayOfYear(now), pct=Math.round(doy/365*100);
+    document.getElementById("year-progress").textContent="TAG "+doy+" / 365 · "+pct+" %";
+  }
+  function tick(){
+    const now=new Date(), h=now.getHours(), m=now.getMinutes(), s=now.getSeconds();
+    document.getElementById("clock").innerHTML=pad(h)+":"+pad(m)+'<span class="sec">:'+pad(s)+'</span>';
+    document.getElementById("greeting").innerHTML=greetingText(h)+'<span class="name">'+NAME+'.</span>';
+    document.getElementById("daterow").innerHTML=WD[now.getDay()]+", "+pad(now.getDate())+" "+MO[now.getMonth()]+" "+now.getFullYear()+'<span class="sep">//</span>KW '+weekNumber(now);
+    document.getElementById("mast-sync").textContent="DÜSSELDORF · SYNC "+pad(h)+":"+pad(m);
+    renderRibbon(now);
+  }
+  tick(); setInterval(tick,1000);
+
+  /* ---------- WETTER ---------- */
+  const WMO={0:["Klar","☀️"],1:["Überwiegend klar","🌤️"],2:["Teils bewölkt","⛅"],3:["Bedeckt","☁️"],45:["Nebel","🌫️"],48:["Reifnebel","🌫️"],51:["Leichter Niesel","🌦️"],53:["Niesel","🌦️"],55:["Starker Niesel","🌧️"],56:["Gefr. Niesel","🌧️"],57:["Gefr. Niesel","🌧️"],61:["Leichter Regen","🌦️"],63:["Regen","🌧️"],65:["Starker Regen","🌧️"],66:["Gefr. Regen","🌧️"],67:["Gefr. Regen","🌧️"],71:["Leichter Schnee","🌨️"],73:["Schnee","🌨️"],75:["Starker Schnee","❄️"],77:["Schneegriesel","🌨️"],80:["Regenschauer","🌦️"],81:["Regenschauer","🌧️"],82:["Heftige Schauer","⛈️"],85:["Schneeschauer","🌨️"],86:["Schneeschauer","🌨️"],95:["Gewitter","⛈️"],96:["Gewitter/Hagel","⛈️"],99:["Gewitter/Hagel","⛈️"]};
+  function wReport(maxT,code,precip){ let base=WMO[code]?WMO[code][0].toLowerCase():"wechselhaft"; let rain=precip>=60?"Regenschirm nicht vergessen.":precip>=30?"Schauer möglich.":"weitgehend trocken."; return "Bericht: "+base+", Höchstwerte um "+Math.round(maxT)+"°, "+rain; }
+  function buildTicker(d){
+    const cur=d.current, day=d.daily, code=cur.weather_code, w=WMO[code]||["Wetter","•"];
+    const t=Math.round(cur.temperature_2m), feels=Math.round(cur.apparent_temperature);
+    const max=Math.round(day.temperature_2m_max[0]), min=Math.round(day.temperature_2m_min[0]);
+    const wind=Math.round(cur.wind_speed_10m), hum=Math.round(cur.relative_humidity_2m);
+    const precip=day.precipitation_probability_max?day.precipitation_probability_max[0]:0;
+    const sr=new Date(day.sunrise[0]), ss=new Date(day.sunset[0]);
+    const srS=pad(sr.getHours())+":"+pad(sr.getMinutes()), ssS=pad(ss.getHours())+":"+pad(ss.getMinutes());
+    const now=new Date();
+    realSun={ rise:sr.getHours()+sr.getMinutes()/60, set:ss.getHours()+ss.getMinutes()/60 };
+    const seg=(label,val)=>'<span class="seg"><span class="lbl">'+label+'</span> '+val+'</span>';
+    const D='<span class="dmd">◆</span>';
+    const parts=[
+      '<span class="seg" style="font-weight:700">'+w[1]+' DÜSSELDORF</span>',
+      seg("JETZT", t+"° (gefühlt "+feels+"°) · "+w[0]),
+      seg("TAG", "↑ "+max+"°  ↓ "+min+"°"),
+      seg("WIND", wind+" km/h"),
+      seg("REGEN", precip+" %"),
+      seg("LUFT", hum+" %"),
+      seg("SONNE", "🌅 "+srS+"  🌇 "+ssS),
+      '<span class="seg">'+wReport(max,code,precip)+'</span>',
+      seg("STAND", pad(now.getHours())+":"+pad(now.getMinutes())+" Uhr")
+    ];
+    const seq='<span>'+parts.join(D)+D+'</span>';
+    const tk=document.getElementById("ticker"), inner=document.getElementById("ticker-inner");
+    tk.classList.remove("loading"); inner.innerHTML=seq+seq;
+  }
+  async function loadWeather(){
+    const url="https://api.open-meteo.com/v1/forecast?latitude="+LAT+"&longitude="+LON+"&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max&timezone=Europe%2FBerlin";
+    try{ const r=await fetch(url); if(!r.ok)throw new Error(); buildTicker(await r.json()); }
+    catch(e){ document.getElementById("ticker-inner").innerHTML='<span>Wetterdaten momentan nicht verfügbar — bitte später erneut laden. ◆ &nbsp;</span>'.repeat(4); document.getElementById("ticker").classList.remove("loading"); }
+  }
+  loadWeather(); setInterval(loadWeather, 30*60*1000);
+
+  /* ---------- DEPOT (live, wo möglich) ---------- */
+  const YH="https://query1.finance.yahoo.com/v8/finance/chart/";
+  const FX_FALLBACK=0.8763; let fxUSDEUR=FX_FALLBACK;
+
+  // snapPrice = USD-Kurs aus Screenshot (für Plausibilitätscheck); te = Gesamt-G/V aus Screenshot
+  const HOLDINGS=[
+    {n:"iShares Gold",    shares:16.60, theme:"Gold / Absicherung", src:"yahoo",     sym:"SGLN.L", snapPrice:80.14,  snapVal:1165.72, snapD:-1.37, snapDe:-16.22,  te:-73.86},
+    {n:"Lumentum",        shares:1.16,  theme:"Tech / KI",          src:"yahoo",     sym:"LITE",   snapPrice:893.93, snapVal:908.71,  snapD:5.17,  snapDe:44.66,   te:10.35},
+    {n:"Nebius",          shares:4.56,  theme:"Tech / KI",          src:"yahoo",     sym:"NBIS",   snapPrice:283.61, snapVal:1133.32, snapD:-1.07, snapDe:-12.31,  te:241.01},
+    {n:"Nvidia",          shares:17.43, theme:"Tech / KI",          src:"yahoo",     sym:"NVDA",   snapPrice:209.80, snapVal:3204.56, snapD:0.00,  snapDe:0.00,    te:-144.34},
+    {n:"Rocket Lab",      shares:42,    theme:"Raumfahrt",          src:"yahoo",     sym:"RKLB",   snapPrice:100.29, snapVal:3691.24, snapD:-6.48, snapDe:-255.80, te:-791.11},
+    {n:"Solana",          shares:38.72, theme:"Krypto",             src:"coingecko", id:"solana",  snapPrice:60.39,  snapVal:2338.30, snapD:-4.00, snapDe:-97.52,  te:-363.12},
+    {n:"BIT Global Tech", shares:8.60,  theme:"Tech / KI",          src:"static",                  snapPrice:764.62, snapVal:6575.69, snapD:-2.59, snapDe:-175.08, te:-135.27},
+    {n:"Bloom Energy",    shares:4.70,  theme:"Energie",            src:"yahoo",     sym:"BE",     snapPrice:345.85, snapVal:1424.46, snapD:5.15,  snapDe:69.77,   te:313.21},
+    {n:"IonQ",            shares:14.88, theme:"Quanten",            src:"yahoo",     sym:"IONQ",   snapPrice:58.32,  snapVal:760.24,  snapD:3.13,  snapDe:23.07,   te:-133.03},
+    {n:"Vertiv",          shares:5.67,  theme:"Energie",            src:"yahoo",     sym:"VRT",    snapPrice:357.96, snapVal:1778.62, snapD:7.48,  snapDe:123.77,  te:278.47},
+    {n:"Vistra",          shares:11,    theme:"Energie",            src:"yahoo",     sym:"VST",    snapPrice:167.26, snapVal:1612.31, snapD:2.14,  snapDe:33.83,   te:116.54}
+  ];
+  const SOL_IDX=HOLDINGS.findIndex(h=>h.src==="coingecko");
+
+  // Laufzeit-Zustand, initialisiert aus dem Snapshot
+  const state=HOLDINGS.map(h=>({ n:h.n, theme:h.theme, val:h.snapVal, d:h.snapD, de:h.snapDe, cost:h.snapVal-h.te, live:false }));
+
+  const eur=v=>v.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+  const pctS=v=>(v>=0?"+":"")+v.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+" %";
+  const cls=v=> v>0?"pos": v<0?"neg":"flat";
+
+  function renderDepot(){
+    let value=0, dayEur=0, cost=0, liveN=0;
+    state.forEach(s=>{ value+=s.val; dayEur+=s.de; cost+=s.cost; if(s.live)liveN++; });
+    const totEur=value-cost;
+    const dayPct=(value-dayEur)!==0 ? dayEur/(value-dayEur)*100 : 0;
+    const totPct=cost!==0 ? totEur/cost*100 : 0;
+
+    document.getElementById("depot-total").textContent=eur(value);
+    const dEl=document.getElementById("depot-day"); dEl.className="v "+cls(dayEur); dEl.textContent=eur(dayEur)+"  ·  "+pctS(dayPct);
+    const tEl=document.getElementById("depot-tot"); tEl.className="v "+cls(totEur); tEl.textContent=eur(totEur)+"  ·  "+pctS(totPct);
+
+    const stEl=document.getElementById("depot-status");
+    stEl.querySelector(".dot").className="dot "+(liveN>0?"live":"static");
+    document.getElementById("depot-livecount").textContent=liveN+"/"+state.length+" LIVE";
+
+    const maxAbs=Math.max(...state.map(s=>Math.abs(s.d)),0.01);
+    const sorted=[...state].sort((a,b)=>b.d-a.d);
+    document.getElementById("depot-list").innerHTML=sorted.map(s=>{
+      const c=cls(s.d), w=Math.max(2,Math.abs(s.d)/maxAbs*52);
+      return '<div class="pos"><div><div class="pos-n">'+s.n+'</div>'
+        +'<div class="pos-v">'+eur(s.val)+'<span class="livebadge '+(s.live?"on":"off")+'">'+(s.live?"live":"snap")+'</span></div></div>'
+        +'<div class="pos-r"><div class="pos-pct '+c+'">'+pctS(s.d)+'</div><span class="pos-bar '+c+'" data-w="'+w+'"></span></div></div>';
+    }).join("");
+    requestAnimationFrame(()=>{ document.querySelectorAll("#depot-list .pos-bar").forEach(b=>{ b.style.width=b.dataset.w+"px"; }); });
+
+    const snaps=state.filter(s=>!s.live).map(s=>s.n);
+    document.getElementById("depot-note").innerHTML = "Live: Yahoo &amp; CoinGecko · "+(snaps.length? "Snapshot: "+snaps.join(", ") : "alle Positionen live");
+  }
+
+  function renderOutlook(){
+    let value=0, dayEur=0; state.forEach(s=>{ value+=s.val; dayEur+=s.de; });
+    const dayPct=(value-dayEur)!==0 ? dayEur/(value-dayEur)*100 : 0;
+    const up=state.filter(s=>s.d>0).length, flat=state.filter(s=>s.d===0).length, down=state.filter(s=>s.d<0).length;
+    const best=[...state].sort((a,b)=>b.d-a.d)[0], worst=[...state].sort((a,b)=>a.d-b.d)[0];
+
+    document.getElementById("ol-today").innerHTML='Netto <b class="'+cls(dayEur)+'">'+eur(dayEur)+' · '+pctS(dayPct)+'</b> über alle '+state.length+' Positionen.';
+    document.getElementById("ol-chips").innerHTML=
+        '<span class="chip"><span class="pos">'+up+' im Plus</span></span>'
+      + '<span class="chip">'+flat+' neutral</span>'
+      + '<span class="chip"><span class="neg">'+down+' im Minus</span></span>'
+      + '<span class="chip">Treiber: '+best.n+' <span class="pos">'+pctS(best.d)+'</span></span>'
+      + '<span class="chip">Bremse: '+worst.n+' <span class="neg">'+pctS(worst.d)+'</span></span>';
+
+    const themes={}; state.forEach(s=>{ themes[s.theme]=(themes[s.theme]||0)+s.val; });
+    const arr=Object.entries(themes).map(([k,v])=>({k,v,p:v/value*100})).sort((a,b)=>b.v-a.v);
+    const maxP=arr[0].p;
+    document.getElementById("ol-themes").innerHTML=arr.map((t,i)=>{
+      const w=t.p/maxP*100, col=i===0?"var(--accent)":"var(--blue)";
+      return '<div class="theme"><div class="theme-top"><span class="tn">'+t.k+'</span><span class="tp">'+Math.round(t.p)+' % · '+eur(t.v)+'</span></div>'
+        +'<div class="theme-track"><div class="theme-fill" data-w="'+w+'" style="background:'+col+'"></div></div></div>';
+    }).join("");
+    requestAnimationFrame(()=>{ document.querySelectorAll(".theme-fill").forEach(f=>{ f.style.width=f.dataset.w+"%"; }); });
+
+    const topPos=[...state].sort((a,b)=>b.val-a.val)[0];
+    document.getElementById("ol-week").innerHTML='Größte Einzelposition: <b>'+topPos.n+'</b> mit '+Math.round(topPos.val/value*100)+' % des Depots. Dein größtes Thema <b>'+arr[0].k+'</b> macht '+Math.round(arr[0].p)+' % aus — Bewegungen dort prägen deine Woche am stärksten. Klumpenrisiko entsprechend im Blick behalten.';
+  }
+
+  function updateAll(){ renderDepot(); renderOutlook(); }
+  updateAll(); // Snapshot sofort anzeigen
+
+  async function fetchFX(){
+    try{ const r=await fetch(YH+"EURUSD=X?interval=1d&range=1d"); if(!r.ok)throw 0;
+      const d=await r.json(); const p=d.chart.result[0].meta.regularMarketPrice;
+      if(p>0.5&&p<2) fxUSDEUR=1/p;
+    }catch(e){ /* Fallback bleibt */ }
+  }
+  async function fetchHolding(i){
+    const h=HOLDINGS[i];
+    try{
+      const r=await fetch(YH+h.sym+"?interval=1d&range=1d"); if(!r.ok)throw 0;
+      const d=await r.json(); const m=d.chart.result[0].meta;
+      const price=m.regularMarketPrice; const prev=m.chartPreviousClose??m.previousClose;
+      if(!(price>0)) throw 0;
+      if(h.snapPrice && (price>h.snapPrice*5 || price<h.snapPrice*0.2)) throw 0; // Plausibilitätscheck
+      const val=price*h.shares*fxUSDEUR;
+      let dPct=state[i].d, de=state[i].de;
+      if(prev>0){ dPct=(price-prev)/prev*100; de=val-(prev*h.shares*fxUSDEUR); }
+      state[i].val=val; state[i].d=dPct; state[i].de=de; state[i].live=true;
+    }catch(e){ state[i].live=false; }
+  }
+  async function refreshPortfolio(){
+    await fetchFX();
+    await Promise.all(HOLDINGS.map((h,i)=> h.src==="yahoo" ? fetchHolding(i) : Promise.resolve()));
+    updateAll();
+  }
+  refreshPortfolio();
+  setInterval(refreshPortfolio, 60000);
+
+  /* ---------- Prioritäten ---------- */
+  const STORE_KEY="jakob_daily_tasks_"+new Date().toISOString().slice(0,10);
+  let doneState={}; try{ doneState=JSON.parse(localStorage.getItem(STORE_KEY))||{}; }catch(e){ doneState={}; }
+  function paintTasks(){
+    let open=0;
+    document.querySelectorAll(".task").forEach(t=>{ const id=t.dataset.id, done=!!doneState[id];
+      t.classList.toggle("done",done); t.setAttribute("aria-checked",done?"true":"false");
+      t.querySelector(".box").textContent=done?"✓":""; if(!done)open++; });
+    document.getElementById("task-count").textContent= open===0?"ALLE ERLEDIGT":open+" OFFEN";
+  }
+  function toggleTask(t){ const id=t.dataset.id; doneState[id]=!doneState[id]; try{ localStorage.setItem(STORE_KEY,JSON.stringify(doneState)); }catch(e){} paintTasks(); }
+  document.querySelectorAll(".task").forEach(t=>{ t.addEventListener("click",()=>toggleTask(t)); t.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); toggleTask(t);} }); });
+  paintTasks();
+
+  /* ---------- CRYPTO Watchlist (+ Solana ins Depot) ---------- */
+  const CG={BTC:"bitcoin",ETH:"ethereum",SOL:"solana"}, CRYPTO=Object.keys(CG);
+  function paintRow(row,price,change,priceFmt){
+    const p=row.querySelector(".price"), c=row.querySelector(".chg"), bar='<span class="bar"></span>';
+    if(price==null){ p.textContent="—"; p.classList.add("dim"); c.className="chg muted"; c.innerHTML=bar+"—"; return; }
+    p.textContent=priceFmt; p.classList.remove("dim");
+    if(typeof change==="number"){ const pos=change>=0; c.className="chg "+(pos?"pos":"neg"); c.innerHTML=bar+(pos?"+":"")+change.toFixed(2)+"%";
+      const w=Math.min(46,Math.abs(change)*4.5); requestAnimationFrame(()=>{ c.querySelector(".bar").style.width=w+"px"; });
+    } else { c.className="chg muted"; c.innerHTML=bar+"—"; }
+  }
+  async function loadCrypto(){
+    const ids=CRYPTO.map(t=>CG[t]).join(",");
+    const url="https://api.coingecko.com/api/v3/simple/price?ids="+ids+"&vs_currencies=usd,eur&include_24hr_change=true";
+    try{ const r=await fetch(url); if(!r.ok)throw new Error(); const d=await r.json();
+      CRYPTO.forEach(t=>{ const row=document.querySelector('#crypto-rows .row[data-ticker="'+t+'"]'); const cd=d[CG[t]];
+        if(!cd||cd.usd===undefined){ paintRow(row,null); return; }
+        const price=cd.usd, fmt="$"+price.toLocaleString(undefined,{maximumFractionDigits:price<1?4:2});
+        paintRow(row,price,cd.usd_24h_change,fmt); });
+      // Solana ins Depot übernehmen (EUR)
+      const sol=d.solana;
+      if(sol && sol.eur){ const p=sol.eur; state[SOL_IDX].val=p*HOLDINGS[SOL_IDX].shares; state[SOL_IDX].d=(typeof sol.eur_24h_change==="number")?sol.eur_24h_change:state[SOL_IDX].d; state[SOL_IDX].de=state[SOL_IDX].val-state[SOL_IDX].val/(1+state[SOL_IDX].d/100); state[SOL_IDX].live=true; updateAll(); }
+    }catch(e){ CRYPTO.forEach(t=>paintRow(document.querySelector('#crypto-rows .row[data-ticker="'+t+'"]'),null));
+      document.getElementById("crypto-status").innerHTML='<span class="dot static"></span>STATISCH · COINGECKO'; }
+  }
+  /* ---------- AKTIEN Watchlist ---------- */
+  const STOCKS=["RKLB","NVDA","NBIS"];
+  async function loadStocks(){
+    let ok=false;
+    for(const t of STOCKS){ const row=document.querySelector('#stock-rows .row[data-ticker="'+t+'"]');
+      try{ const r=await fetch(YH+t+"?interval=1d&range=1d"); if(!r.ok)throw new Error();
+        const d=await r.json(); const meta=d.chart.result[0].meta; const price=meta.regularMarketPrice; const prev=meta.chartPreviousClose??meta.previousClose;
+        if(price===undefined)throw new Error(); ok=true;
+        const fmt="$"+price.toLocaleString(undefined,{maximumFractionDigits:2}); const chg=prev?((price-prev)/prev*100):null;
+        paintRow(row,price,chg,fmt);
+      }catch(e){ const p=row.querySelector(".price"),c=row.querySelector(".chg"); p.textContent="— Markt geschlossen"; p.classList.add("dim"); c.className="chg muted"; c.innerHTML='<span class="bar"></span>—'; }
+    }
+    if(!ok) document.getElementById("stock-status").innerHTML='<span class="dot static"></span>STATISCH · YAHOO';
+  }
+  loadCrypto(); loadStocks();
+  setInterval(loadCrypto,60000); setInterval(loadStocks,60000);
+</script>
+</body>
+</html>
